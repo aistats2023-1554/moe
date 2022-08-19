@@ -22,12 +22,12 @@ In order to install the code locally please follow the steps below:
 
 3. Run the following command to set up the environment:
 
-   `make` on **Mac**
+   `make` on **Mac** \
    `make -f Makefile.linux` on **Linux**
 
 4. Uncompress the pre-trained models:
 
-   `cd models/pre_trained`
+   `cd models/pre_trained` \
    `tar -xvzf pre_trained_models.tar.gz`
 
 RUNNING JUPYTER NOTEBOOK for EXPERIMENTS
