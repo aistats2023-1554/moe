@@ -1,18 +1,11 @@
-Gated Modular Deep Learning
+Code to reproduce results in paper 8604, AAAI 2023
 =======================================================================================================
-
-This repository contains various experiments to understand and improve interpertability in gated modular neural networks. Currently I am using the various Mixture of Experts architecture models listed below for these experiments: 
-
-1. Expectation Model
-2. Stochastic Model
-3. Pre-softmax Model
-4. EM Model
 
 REQUIREMENTS
 ------------
 
-1. ``Python 3.7`` 
-2. ``Pytorch 1.6.0, optionally with Cuda 10.1`` 
+1. ``Python 3.9`` 
+2. ``Pytorch 1.11.0, optionally with Cuda 10.1`` 
 3. Linux Operating System. It has been tested on Ubuntu and MacOS. 
 4. Additional modules listed in ``requirements.txt``
 
@@ -25,18 +18,19 @@ In order to install the code locally please follow the steps below:
 
 2. Set the environment variable to point to your python executable:
 
-   `export PYTHON=<path to python 3.7 executable>`
+   `export PYTHON=<path to python 3.9 executable>`
 
 3. Run the following command to set up the environment:
 
-   `make` on **Linux/Mac**
+   `make` on **Mac**
+   `make -f Makefile.linux` on **Linux**
 
-4. Activate the environment by running:
+4. Uncompress the pre-trained models:
 
-   `source mnn/bin/activate` on **Linux/Mac**
+   `cd models/pre_trained`
+   `tar -xvzf pre_trained_models.tar.gz`
 
-
-RUNNING JUPYTER NOTEBOOK for WORKSHOP EXPERIMENTS
+RUNNING JUPYTER NOTEBOOK for EXPERIMENTS
 ------------------------
 
 1. Run the following script to start jupyter: 
@@ -45,10 +39,8 @@ RUNNING JUPYTER NOTEBOOK for WORKSHOP EXPERIMENTS
 
 2. In the jupyter lab go to the notebooks folder which contains all the relevant notebooks 
 
-3. Start with the toy_classification.ipynb.
+3. Select the mnn kernel if not already selected.
 
-4. Select the mnn kernel.
-
-5. You should now be able to run the notebooks.
+4. You should now be able to run the notebooks.
 
 
