@@ -1,0 +1,10 @@
+filename,train error,val error,mutual information,sample entropy,experts usage,val error std
+fmnist_single_model_7,0.115,0.132,,,,0.011
+fmnist_without_reg_10_5_models.pt,0.041,0.104,2.034,0.081,2.048,0.006
+fmnist_with_reg_importance_0.2_10_5_models.pt,0.031,0.103,2.301,0.172,2.321,0.006
+fmnist_with_reg_sample_sim_same_1e-07_sample_sim_diff_0.01_10_5_models.pt,0.018,0.095,2.198,0.110,2.225,0.007
+fmnist_with_attention_10_5_models.pt,0.041,0.098,2.071,0.114,2.249,0.013
+fmnist_with_attn_reg_importance_0.8_10_5_models.pt,0.014,0.098,2.233,0.101,2.319,0.006
+fmnist_with_attn_reg_sample_sim_same_1e-06_sample_sim_diff_1e-06_10_5_models.pt,0.014,0.096,2.296,0.109,2.321,0.008
+new_fmnist_with_attn_reg_importance_1.0_10_5_models.pt,0.004,0.087,2.227,0.101,2.318,0.007
+new_fmnist_with_attn_reg_sample_sim_same_1e-06_sample_sim_diff_1e-06_10_5_models.pt,0.005,0.089,2.304,0.076,2.321,0.008

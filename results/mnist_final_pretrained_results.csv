@@ -1,0 +1,12 @@
+filename,test error,training loss,mutual information,sample entropy,experts usage
+mnist_scratch,0.09,0.13,1.51,0.24,1.91
+filename,test error,training loss,mutual information,sample entropy,experts usage
+mnist_pretrained_gate_scratch_same_wts,0.09,0.13,1.54,0.24,1.91
+filename,test error,training loss,mutual information,sample entropy,experts usage
+mnist_pretrained_gate_scratch_rand_wts,0.12,0.19,1.56,0.24,1.91
+filename,test error,training loss,mutual information,sample entropy,experts usage
+mnist_pretrained_gate_prechosen,0.08,0.05,2.32,0.11,2.32
+filename,test error,training loss,mutual information,sample entropy,experts usage
+mnist_pretrained_gate_prechosen_same_wts,0.08,0.04,2.32,0.11,2.32
+filename,test error,training loss,mutual information,sample entropy,experts usage
+mnist_pretrained_gate_prechosen_rand_wts,0.08,0.05,2.32,0.11,2.32
