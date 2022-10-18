@@ -40,7 +40,7 @@ RUNNING JUPYTER NOTEBOOK for EXPERIMENTS
 
 4. You should now be able to run the notebooks.
 
-5. The performance metrics reported in the paper are in the `results` folder in '<dataset>_final_results.csv'.
+5. The performance metrics reported in the paper are in the `results/<dataset>_final_results.csv`.
 
 
 
