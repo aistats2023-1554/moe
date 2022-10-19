@@ -211,11 +211,11 @@ def generate_plot_file(dataset, temp=1.0, w_importance=0.0, w_ortho=0.0, w_sampl
     return plot_file
 
 
-def find_best_model(m, temps=[1.0], w_importance_range=[], 
+def find_best_model(m, temps=[[1.0]*20], w_importance_range=[],  
             w_sample_sim_same_range=[], w_sample_sim_diff_range=[], 
                     total_experts=5, num_classes=10, num_epochs=20, model_path=None):
 
-    min_val_error = float('inf')
+    min_train_error = float('inf')
     mutual_info = 0.0
     sample_entropy = 0.0
     expert_usage = 0.0
@@ -224,7 +224,7 @@ def find_best_model(m, temps=[1.0], w_importance_range=[],
     if w_importance_range:
          for T, w_importance in product(temps, w_importance_range):
         
-              plot_file = generate_plot_file(m, temp=T, w_importance=w_importance,
+              plot_file = generate_plot_file(m, temp=T[0], w_importance=w_importance,
                                specific=str(num_classes)+'_'+str(total_experts)+'_models.pt')
 
               models = torch.load(open(os.path.join(model_path, plot_file),'rb'), map_location=device)
@@ -233,8 +233,9 @@ def find_best_model(m, temps=[1.0], w_importance_range=[],
                   for e_key, e_val in model.items():
                       history = model[e_key]['experts'][total_experts]['history']
                       val_error = 1-history['val_accuracy'][-1]
-                      if min_val_error > val_error:
-                         min_val_error = val_error
+                      train_error = 1-history['accuracy'][-1]
+                      if min_train_error > train_error:
+                         min_train_error = train_error
                          mutual_info = history['mutual_EY'][-1]
                          sample_entropy = history['sample_entropy'][-1]
                          expert_usage = expert_usage_entropy(history,total_experts,num_epochs)
@@ -251,17 +252,17 @@ def find_best_model(m, temps=[1.0], w_importance_range=[],
         for model in models:
             for e_key, e_val in model.items():
                 history = model[e_key]['experts'][total_experts]['history']
-                val_error = 1-history['val_accuracy'][-1]
+                train_error = 1-history['accuracy'][-1]
                 
-                if min_val_error > val_error:
-                    min_val_error = val_error
+                if min_train_error > train_error:
+                    min_train_error = train_error
                     mutual_info = history['mutual_EY'][-1]
                     sample_entropy = history['sample_entropy'][-1]
                     expert_usage = expert_usage_entropy(history,total_experts,num_epochs)
                     best_model = model
                     best_model_file = plot_file
 
-    print('Min Validation Error','{:.3f}'.format(min_val_error))
+    print('Min Training Error','{:.3f}'.format(min_train_error))
     print('Mutual Information', '{:.3f}'.format(mutual_info))
     print('Sample Entropy', '{:.3f}'.format(sample_entropy))
     print('Expert Usage', '{:.3f}'.format(expert_usage))
@@ -269,7 +270,7 @@ def find_best_model(m, temps=[1.0], w_importance_range=[],
 
 
 
-def plot_expert_usage(m, test_loader, temps=[1.0], w_importance_range=[], w_ortho_range=[0.0], 
+def plot_expert_usage(m, test_loader, temps=[[1.0]*20], w_importance_range=[], w_ortho_range=[0.0], 
                       w_sample_sim_same_range=[], w_sample_sim_diff_range=[], total_experts=5, num_classes=10, 
                       classes=list(range(10)),num_epochs=20, fig_path=None, model_path=None):
     
@@ -289,7 +290,7 @@ def plot_expert_usage(m, test_loader, temps=[1.0], w_importance_range=[], w_orth
 
         fig,ax = plt.subplots(1, 1, sharex=False, sharey=False, figsize=(12, 8))
 
-        palette = sns.color_palette("Set2")
+        palette = sns.color_palette("Set2", total_experts )
         for i in range(total_experts):
             sns.lineplot(x=range(num_epochs), y=gate_probabilities_sum[:,i], 
                          hue=[i]*num_epochs, palette=palette[i:i+1], ax=ax)
@@ -300,7 +301,11 @@ def plot_expert_usage(m, test_loader, temps=[1.0], w_importance_range=[], w_orth
         plt.show()
 
         cmap = sns.color_palette("ch:s=.25,rot=-.25", as_cmap=True)
-        with torch.no_grad(): 
+        with torch.no_grad():
+            gate_outputs_all = []
+            pred_labels_all = []
+            labels_all = []
+            exp_class_prob = torch.zeros(total_experts, num_classes).to(device)
             for images, labels in test_loader:
                 images, labels = images.to(device), labels.to(device)
                 moe_model = e_val['experts'][total_experts]['model']
@@ -309,68 +314,75 @@ def plot_expert_usage(m, test_loader, temps=[1.0], w_importance_range=[], w_orth
                 pred = moe_model(images)
                 pred_labels = torch.argmax(pred, dim=1)
 
+                labels_all.append(labels)
+                pred_labels_all.append(pred_labels)
+                
                 expert_outputs = moe_model.expert_outputs
                 gate_outputs = moe_model.gate_outputs
-
-                fig,ax = plt.subplots(1, 1, sharex=False, sharey=False, figsize=(8, 6))
-                x = ['Expert '+str(i+1) for i in range(total_experts)]
-                y = torch.sum(gate_outputs, dim=0).cpu().numpy()
-
-                sns.barplot(x=x, y=y, palette=palette, ax=ax)
-
-                plt.ylabel('Number of samples', fontsize=fontsize_label)
-                ax.tick_params(axis='both', labelsize=10)
-
-                plt.title('Samples sent to each expert', fontsize=fontsize)
-                plot_file = model_file.replace('models.pt', 'expert_usage.png')
-                plt.savefig(os.path.join(fig_path, plot_file))
-                plt.show()
-
-                exp_class_prob = torch.zeros(total_experts, num_classes).to(device)
-                for e in range(total_experts):
-                    for index, l in enumerate(labels):
-                        exp_class_prob[e,l] += gate_outputs[index,e]  
-
-                exp_total_prob = torch.sum(exp_class_prob, dim=1).view(-1,1).to(device)
-
-                fig,ax = plt.subplots(1, 2, sharex=False, sharey=False, figsize=(12,4))
-
-                sns.heatmap(exp_class_prob.cpu().numpy().astype(int), yticklabels=['E'+str(i) for i in range(1,total_experts+1)], 
-                                xticklabels=[classes[i] for i in range(0, num_classes)],
-                                cmap=cmap, annot=True, fmt='d', ax=ax[0])
-                sns.heatmap(exp_total_prob.cpu().numpy().astype(int), yticklabels=['E'+str(i) for i in range(1,total_experts+1)], 
-                                xticklabels=['Total'],
-                                cmap=cmap, annot=True, fmt='d', ax=ax[1])
-                plt.show()
-
-                # get the experts selected by the gate for each sample
-                pred_gate_labels = torch.argmax(gate_outputs, dim=1)
-
-                # plot the expert selection table
-                print('\nExperts used by the gate for classification of each digit')
-                class_expert_table = np.asarray([[0] * num_classes]*total_experts)
-                for label, expert in zip(labels, pred_gate_labels):
-                    class_expert_table[expert,label] += 1
-
-
-                fig1,ax = plt.subplots(1, 1, sharex=False, sharey=False, figsize=(8, 5))
-                sns.heatmap(class_expert_table, yticklabels=['E'+str(i) for i in range(1,total_experts+1)], 
-                            xticklabels=[classes[i] for i in range(0, num_classes)],
-                            annot=True, cmap=cmap, fmt='d', ax=ax)
-
-                plt.title('Experts selected per digit for 2000 samples of\n MNIST test data', 
-                                 fontsize=fontsize)
                 
-                plot_file = model_file.replace('models.pt', 'class_expert_table.png')
-                plt.savefig(os.path.join(fig_path, plot_file))
+                gate_outputs_all.append(gate_outputs)
 
-                fig1,ax = plt.subplots(1, 1, sharex=False, sharey=False, figsize=(6, 4))
-                sns.heatmap(confusion_matrix(labels.cpu(), pred_labels.cpu()), 
-                            xticklabels=[classes[i] for i in range(0, num_classes)],
-                            yticklabels=[classes[i] for i in range(0, num_classes)], 
-                            annot=True, cmap=cmap, fmt='d', ax=ax)
+            gate_outputs = torch.vstack(gate_outputs_all)
+            labels = torch.hstack(labels_all)
+            pred_labels = torch.hstack(pred_labels_all)
+            
+            fig,ax = plt.subplots(1, 1, sharex=False, sharey=False, figsize=(8, 6))
+            x = ['Expert '+str(i+1) for i in range(total_experts)]
+            y = torch.sum(gate_outputs, dim=0).cpu().numpy()
 
-                plt.show()
+            sns.barplot(x=x, y=y, palette=palette, ax=ax)
+
+            plt.ylabel('Number of samples', fontsize=fontsize_label)
+            ax.tick_params(axis='both', labelsize=10)
+
+            plt.title('Samples sent to each expert', fontsize=fontsize)
+            plot_file = model_file.replace('models.pt', 'expert_usage.png')
+            plt.savefig(os.path.join(fig_path, plot_file))
+            plt.show()
+
+            for e in range(total_experts):
+                for index, l in enumerate(labels):
+                    exp_class_prob[e,l] += gate_outputs[index,e]
+
+            exp_total_prob = torch.sum(exp_class_prob, dim=1).view(-1,1).to(device)
+            fig,ax = plt.subplots(1, 2, sharex=False, sharey=False, figsize=(36,12))
+                
+            sns.heatmap(exp_class_prob.cpu().numpy().astype(int), yticklabels=['E'+str(i) for i in range(1,total_experts+1)], 
+                        xticklabels=[classes[i] for i in range(0, num_classes)],
+                        cmap=cmap, annot=True, fmt='d', ax=ax[0])
+            sns.heatmap(exp_total_prob.cpu().numpy().astype(int), yticklabels=['E'+str(i) for i in range(1,total_experts+1)], 
+                        xticklabels=['Total'],
+                        cmap=cmap, annot=True, fmt='d', ax=ax[1])
+            plt.show()
+            
+
+            # get the experts selected by the gate for each sample
+            pred_gate_labels = torch.argmax(gate_outputs, dim=1)
+            
+            # plot the expert selection table
+            print('\nExperts used by the gate for classification of each digit')
+            class_expert_table = np.asarray([[0] * num_classes]*total_experts)
+            for label, expert in zip(labels, pred_gate_labels):
+                class_expert_table[expert,label] += 1
+
+            fig1,ax = plt.subplots(1, 1, sharex=False, sharey=False, figsize=(24, 15))
+            sns.heatmap(class_expert_table, yticklabels=['E'+str(i) for i in range(1,total_experts+1)], 
+                        xticklabels=[classes[i] for i in range(0, num_classes)],
+                        annot=True, cmap=cmap, fmt='d', ax=ax)
+            
+            plt.title('Experts selected per digit for '+str(len(test_loader))+' samples of\n MNIST test data', 
+                      fontsize=fontsize)
+                
+            plot_file = model_file.replace('models.pt', 'class_expert_table.png')
+            plt.savefig(os.path.join(fig_path, plot_file))
+
+            fig1,ax = plt.subplots(1, 1, sharex=False, sharey=False, figsize=(24, 16))
+            sns.heatmap(confusion_matrix(labels.cpu(), pred_labels.cpu()), 
+                        xticklabels=[classes[i] for i in range(0, num_classes)],
+                        yticklabels=[classes[i] for i in range(0, num_classes)], 
+                        annot=True, cmap=cmap, fmt='d', ax=ax)
+            
+            plt.show()
 
 
 def expert_usage_entropy(history, total_experts=5, num_epochs=20):
@@ -426,15 +438,14 @@ def boxplot(model_single=None, model_with_temp=None,model_with_temp_decay=None,
         plot_file = generate_plot_file(m, specific=str(num_classes)+'_models.pt')
 
         model_0 = torch.load(open(os.path.join(model_path, plot_file),'rb'), map_location=device)
-
         for history in model_0['history']:
-            error = [e.item() for e in 1-torch.vstack(history['accuracy'])]
-            val_error = [e.item() for e in 1-torch.vstack(history['val_accuracy'])]
-            y_error.append(error[-1])
-            y_val_error.append(val_error[-1])
-            x.append('SM')
-            hues.append('Single Model')
-    
+             error = 1-torch.tensor(history['accuracy']).to(device)
+             val_error = 1-torch.tensor(history['val_accuracy']).to(device)
+             y_error.append(error[-1])
+             y_val_error.append(val_error[-1])
+             x.append('SM')
+             hues.append('Single Model')
+
     if not model_without_reg is None:
 
         for name, m in model_without_reg.items():
