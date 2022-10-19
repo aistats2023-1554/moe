@@ -12,4 +12,5 @@ echo "PYTHONPATH: $PYTHONPATH"
 
 deactivate
 source mnn/bin/activate
+
 jupyter lab
